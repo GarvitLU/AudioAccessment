@@ -42,13 +42,13 @@ A backend API that allows you to upload an audio answer and a question, and rece
 
 ## API Endpoint
 
-- `POST /api/assess` — Submit audio and question for AI evaluation (returns structured JSON)
+- `POST /api/assessment` — Submit audio and question for AI evaluation (returns structured JSON)
 
 ## API Usage Example
 
 **Request:**
 - Method: POST
-- URL: http://localhost:3000/api/assess
+- URL: http://localhost:3000/api/assessment
 - Body: form-data
   - `audio` (file): The audio file to upload
   - `question` (text): The question for the assessment

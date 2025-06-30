@@ -1,148 +1,266 @@
-# AI Audio Assessment System
+# Audio Assessment API
 
-A backend API that allows you to upload an audio answer and a question, and receive a detailed AI-powered evaluation using OpenAI's GPT-4o-mini. The system provides comprehensive feedback including analysis, scoring, and improvement suggestions in structured JSON format.
+A Node.js Express server that provides AI-powered audio assessment using OpenAI's Whisper and GPT-4 models.
+
+**🌐 Live API Endpoint**: `https://audioaccessment.onrender.com/api/assessment`
 
 ## Features
 
-- 🤖 **AI Evaluation**: Powered by OpenAI GPT-4o-mini for intelligent assessment
-- 📊 **Detailed Analysis**: Comprehensive feedback with scoring and suggestions
-- ⚡ **Simple API**: Upload audio and question, get JSON feedback
+- 🎤 Audio transcription using OpenAI Whisper
+- 🤖 AI-powered assessment and feedback
+- 📊 Structured scoring system
+- 🔄 Automatic retry mechanism with exponential backoff
+- 🧹 Automatic file cleanup
+- 🛡️ Comprehensive error handling
 
-## Prerequisites
+## Setup
 
-- Node.js (v14 or higher)
-- npm or yarn
-- OpenAI API key
+1. Install dependencies:
+```bash
+npm install
+```
 
-## Installation
+2. Create a `.env` file with your OpenAI API key:
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+PORT=3000
+UPLOAD_PATH=./uploads
+MAX_FILE_SIZE=10485760
+```
 
-1. **Clone or download the project files**
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-3. **Set up environment variables**:
-   - Create a `.env` file in the root directory
-   - Add your OpenAI API key and any other settings:
-     ```env
-     OPENAI_API_KEY=your_openai_api_key_here
-     PORT=3000
-     NODE_ENV=development
-     MAX_FILE_SIZE=10485760
-     UPLOAD_PATH=./uploads
-     ```
-4. **Start the server**:
-   ```bash
-   npm start
-   ```
-   For development with auto-restart:
-   ```bash
-   npm run dev
-   ```
+3. Start the server:
+```bash
+node server.js
+```
 
-## API Endpoint
+## API Documentation
 
-- `POST /api/assess` — Submit audio and question for AI evaluation (returns structured JSON)
+### POST /api/assessment
 
-## API Usage Example
+Assesses an audio response to a given question using AI.
 
-**Request:**
-- Method: POST
-- URL: http://localhost:3000/api/assess
-- Body: form-data
-  - `audio` (file): The audio file to upload
-  - `question` (text): The question for the assessment
+**Production URL**: `https://audioaccessment.onrender.com/api/assessment`
 
-**Sample JSON Response:**
+#### Request Body
+
+The request must be sent as `multipart/form-data` with the following fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `audio` | File | ✅ Yes | Audio file (mp3, wav, m4a, etc.) |
+| `question` | String | ✅ Yes | The question that the audio response is answering |
+
+#### Request Body Example
+
+```javascript
+// Using FormData
+const formData = new FormData();
+formData.append('audio', audioFile); // audioFile is a File object
+formData.append('question', 'Explain the concept of photosynthesis');
+
+// Using fetch
+fetch('https://audioaccessment.onrender.com/api/assessment', {
+  method: 'POST',
+  body: formData
+});
+```
+
+#### cURL Example
+
+```bash
+curl -X POST https://audioaccessment.onrender.com/api/assessment \
+  -F "audio=@/path/to/your/audio.mp3" \
+  -F "question=Explain the concept of photosynthesis"
+```
+
+#### Response Format
+
 ```json
 {
   "success": true,
-  "question": "What is photosynthesis?",
-  "transcription": "Photosynthesis is the process by which green plants...",
+  "question": "Explain the concept of photosynthesis",
+  "transcription": "Photosynthesis is the process by which plants convert sunlight into energy...",
   "assessment": {
     "strengths": [
+      "Good understanding of the basic concept",
       "Clear explanation of the process",
-      "Good use of scientific terms"
+      "Mentioned key components like chlorophyll"
     ],
     "areasToImprove": [
-      "Could mention the role of sunlight more explicitly",
-      "Add more detail about the chemical equation"
+      "Could provide more specific examples",
+      "Missing details about the chemical equation",
+      "Could explain the role of carbon dioxide"
     ],
-    "perfectDefinition": "Photosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods with the help of chlorophyll. The process converts carbon dioxide and water into glucose and oxygen.",
-    "encouragement": "Great job! Keep practicing to add more scientific details.",
+    "perfectDefinition": "Photosynthesis is the process by which green plants, algae, and some bacteria convert light energy, usually from the sun, into chemical energy stored in glucose and other organic compounds. This process involves the conversion of carbon dioxide and water into glucose and oxygen, using chlorophyll to capture light energy.",
+    "encouragement": "Great effort! You have a solid foundation. Keep building on this knowledge with more specific details.",
     "score": {
       "content": 4,
-      "clarity": 4,
-      "completeness": 3,
-      "total": 11
+      "clarity": 3,
+      "completeness": 5,
+      "total": 12
     }
   },
   "metadata": {
-    "audioFile": "audio-1705312200000-123456789.mp3",
-    "originalName": "your-audio.mp3",
-    "fileSize": 1024000,
+    "audioFile": "audio-1703123456789-123456789.mp3",
+    "originalName": "student_response.mp3",
+    "fileSize": 2048576,
     "model": "gpt-4o-mini",
     "transcriptionModel": "whisper-1",
-    "evaluatedAt": "2024-01-15T10:30:00.000Z"
+    "evaluatedAt": "2023-12-21T10:30:45.123Z"
   }
 }
 ```
 
-## Scoring System
-- **content**: out of 5
-- **clarity**: out of 5
-- **completeness**: out of 5
-- **total**: out of 15 (sum of the three above)
+#### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | Boolean | Indicates if the assessment was successful |
+| `question` | String | The original question that was asked |
+| `transcription` | String | The transcribed text from the audio |
+| `assessment` | Object | The AI-generated assessment |
+| `assessment.strengths` | Array | 2-4 positive points about the response |
+| `assessment.areasToImprove` | Array | 2-4 points that need improvement |
+| `assessment.perfectDefinition` | String | A model answer showing what a perfect response would look like |
+| `assessment.encouragement` | String | A motivating message (1-2 sentences) |
+| `assessment.score` | Object | Scoring breakdown |
+| `assessment.score.content` | Number | Content score out of 5 |
+| `assessment.score.clarity` | Number | Clarity score out of 5 |
+| `assessment.score.completeness` | Number | Completeness score out of 5 |
+| `assessment.score.total` | Number | Total score out of 15 |
+| `metadata` | Object | Additional information about the request |
+
+#### Error Responses
+
+##### 400 Bad Request - Missing Audio File
+```json
+{
+  "error": "No audio file provided",
+  "message": "Please provide an audio file in the request"
+}
+```
+
+##### 400 Bad Request - Missing Question
+```json
+{
+  "error": "No question provided",
+  "message": "Please provide a question in the request body"
+}
+```
+
+##### 413 Payload Too Large - File Too Big
+```json
+{
+  "error": "File too large",
+  "message": "The uploaded file exceeds the maximum allowed size",
+  "maxSize": 10485760
+}
+```
+
+##### 500 Internal Server Error
+```json
+{
+  "error": "Failed to assess audio",
+  "details": "Specific error message"
+}
+```
+
+## Quick Start
+
+### Test the API
+
+You can test the API using the hosted endpoint:
+
+```bash
+# Test with cURL
+curl -X POST https://audioaccessment.onrender.com/api/assessment \
+  -F "audio=@/path/to/your/audio.mp3" \
+  -F "question=What is the capital of France?"
+```
+
+### JavaScript Example
+
+```javascript
+const formData = new FormData();
+formData.append('audio', audioFile);
+formData.append('question', 'What is the capital of France?');
+
+fetch('https://audioaccessment.onrender.com/api/assessment', {
+  method: 'POST',
+  body: formData
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));
+```
 
 ## Configuration
 
 ### Environment Variables
 
-- `OPENAI_API_KEY`: Your OpenAI API key (required)
-- `PORT`: Server port (default: 3000)
-- `NODE_ENV`: Environment mode (development/production)
-- `MAX_FILE_SIZE`: Maximum audio file size in bytes (default: 10MB)
-- `UPLOAD_PATH`: Directory for temporary audio files (default: ./uploads)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENAI_API_KEY` | Required | Your OpenAI API key |
+| `PORT` | 3000 | Server port |
+| `UPLOAD_PATH` | ./uploads | Directory for temporary file uploads |
+| `MAX_FILE_SIZE` | 10485760 | Maximum file size in bytes (10MB) |
 
-### OpenAI API Requirements
+### File Requirements
 
-- Requires a valid OpenAI API key
-- Uses GPT-4o-mini model for evaluation
-- Audio files are automatically cleaned up after processing
+- **Supported formats**: Any audio format supported by OpenAI Whisper
+- **Maximum size**: 10MB (configurable via `MAX_FILE_SIZE`)
+- **File naming**: Automatically generated unique names
 
-## Troubleshooting
+## Error Handling
 
-1. **OpenAI API Error**
-   - Verify your API key is correct in `.env`
-   - Check your OpenAI account has sufficient credits
-   - Ensure the API key has access to GPT-4o-mini
+The API includes comprehensive error handling for:
 
-2. **Audio Upload Issues**
-   - Ensure you are uploading a valid audio file (mp3, wav, etc.)
-   - Check file size is under the configured limit
+- Network connectivity issues
+- OpenAI API rate limits
+- Invalid file types
+- File size limits
+- Missing required fields
+- JSON parsing errors
 
-3. **Server Won't Start**
-   - Check if port 3000 is already in use
-   - Verify all dependencies are installed
-   - Check the `.env` file is properly configured
+## Security Features
 
-## File Structure
+- Automatic file cleanup after processing
+- File type validation
+- File size limits
+- CORS enabled
+- Input validation
 
+## Rate Limiting
+
+The API includes automatic retry logic with exponential backoff for:
+- Transcription requests (3 retries)
+- Assessment requests (3 retries)
+
+## Development
+
+### Running Locally
+
+```bash
+npm install
+node server.js
 ```
-├── server.js              # Main server file
-├── package.json           # Dependencies and scripts
-├── README.md              # This file
-├── uploads/               # Temporary audio file storage (auto-created)
+
+The server will start on `http://localhost:3000`
+
+### Running in Production
+
+```bash
+NODE_ENV=production node server.js
 ```
+
+## Dependencies
+
+- `express`: Web framework
+- `cors`: Cross-origin resource sharing
+- `multer`: File upload handling
+- `openai`: OpenAI API client
+- `dotenv`: Environment variable management
 
 ## License
 
-MIT License - feel free to use this project for educational purposes.
-
-## Support
-
-If you encounter any issues or have questions, please check the troubleshooting section above or create an issue in the project repository.
-
----
-
-**Note**: This application requires an active internet connection and a valid OpenAI API key to function properly. 
+MIT License 
